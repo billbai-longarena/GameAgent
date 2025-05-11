@@ -1,0 +1,74 @@
+[
+    {
+        "id": 1,
+        "type": "term",
+        "content": "苹果",
+        "matchId": "fruit"
+    },
+    {
+        "id": 2,
+        "type": "definition",
+        "content": "一种水果",
+        "matchId": "fruit"
+    },
+    {
+        "id": 3,
+        "type": "term",
+        "content": "香蕉",
+        "matchId": "fruit2"
+    },
+    {
+        "id": 4,
+        "type": "definition",
+        "content": "另一种水果",
+        "matchId": "fruit2"
+    },
+    {
+        "id": 5,
+        "type": "term",
+        "content": "狗",
+        "matchId": "animal"
+    },
+    {
+        "id": 6,
+        "type": "definition",
+        "content": "一种动物",
+        "matchId": "animal"
+    },
+    {
+        "id": 7,
+        "type": "term",
+        "content": "猫",
+        "matchId": "animal2"
+    },
+    {
+        "id": 8,
+        "type": "definition",
+        "content": "另一种动物",
+        "matchId": "animal2"
+    },
+    {
+        "id": 9,
+        "type": "term",
+        "content": "红色",
+        "matchId": "color"
+    },
+    {
+        "id": 10,
+        "type": "definition",
+        "content": "一种颜色",
+        "matchId": "color"
+    },
+    {
+        "id": 11,
+        "type": "term",
+        "content": "蓝色",
+        "matchId": "color2"
+    },
+    {
+        "id": 12,
+        "type": "definition",
+        "content": "另一种颜色",
+        "matchId": "color2"
+    }
+]

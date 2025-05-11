@@ -1,0 +1,52 @@
+[
+    {
+        "question": "HTML 代表什么？",
+        "options": [
+            "Hyper Text Markup Language",
+            "High Tech Modern Language",
+            "Hyperlink and Text Markup Language",
+            "Home Tool Markup Language"
+        ],
+        "answer": "Hyper Text Markup Language"
+    },
+    {
+        "question": "哪个 CSS 属性用于改变元素的背景颜色？",
+        "options": [
+            "color",
+            "bgcolor",
+            "background-color",
+            "background"
+        ],
+        "answer": "background-color"
+    },
+    {
+        "question": "JavaScript 中如何声明一个变量？",
+        "options": [
+            "var myVar;",
+            "variable myVar;",
+            "v myVar;",
+            "let myVar;"
+        ],
+        "answer": "let myVar;"
+    },
+    {
+        "question": "哪个 HTML 标签用于创建超链接？",
+        "options": [
+            "<link>",
+            "<a>",
+            "<href>",
+            "<url>"
+        ],
+        "answer": "<a>"
+    },
+    {
+        "question": "在 CSS 中，如何选择一个 id 为 'header' 的元素？",
+        "options": [
+            ".header",
+            "#header",
+            "header",
+            "*header"
+        ],
+        "answer": "#header"
+    }
+]
