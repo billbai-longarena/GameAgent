@@ -20,6 +20,35 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Using start.sh Script
+
+A utility script `start.sh` is available in the root directory of the `gameAgent` project (not inside the `gagent` subdirectory). This script helps in starting the development server by:
+1. Checking if port 3000 is in use.
+2. If the port is occupied, it attempts to stop the process using it.
+3. Navigating into the `gagent` directory.
+4. Running `npm run dev` to start the project.
+
+To use the script:
+1. Make sure you are in the `gameAgent` root directory (the parent directory of `gagent`).
+2. Give the script execute permissions (if you haven't already):
+   ```bash
+   chmod +x start.sh
+   ```
+3. Run the script:
+   ```bash
+   ./start.sh
+   ```
+
+## Running Tests
+
+To run the unit tests for this project, use the following command:
+
+```bash
+npm run test
+```
+
+This will execute the Jest test runner and display the results in your terminal. Make sure you have installed all development dependencies, including `jest-environment-jsdom`, by running `npm install`.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

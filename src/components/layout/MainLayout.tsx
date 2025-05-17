@@ -45,24 +45,16 @@ const MainLayout: React.FC<MainLayoutProps> = ({
     onStopAgent,
 }) => {
     return (
-        <div className="flex flex-col h-screen bg-gray-900 text-white overflow-hidden">
+        <div className="flex flex-col h-screen bg-gray-900 text-white">
             <Header />
 
-            {/* Natural Language Input Area */}
-            <div className="shrink-0"> {/* Prevents this area from shrinking too much */}
-                <NaturalLanguageInput
-                    onSendMessage={onSendMessage}
-                    isProcessing={agentStatus !== AgentStatus.IDLE && agentStatus !== AgentStatus.COMPLETED && agentStatus !== AgentStatus.PAUSED && agentStatus !== AgentStatus.ERROR}
-                />
-            </div>
-
             {/* Main Workspace Area - passed as children */}
-            <main className="flex-grow flex overflow-hidden">
+            <main className="flex-1 h-full overflow-hidden">
                 {children}
             </main>
 
             {/* Status Control Bar Area */}
-            <div className="shrink-0"> {/* Prevents this area from shrinking */}
+            <div className="flex-shrink-0"> {/* Prevents this area from shrinking */}
                 <StatusControlBar
                     agentStatus={agentStatus}
                     currentStage={currentStage}

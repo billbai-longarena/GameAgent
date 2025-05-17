@@ -1,5 +1,6 @@
 import { Server, Socket } from 'socket.io';
 import http from 'http';
+import { GameListItem } from '@/types/game'; // Import GameListItem
 
 // 定义可以从 WebSocket 服务发出的事件类型
 // 这些事件与 design.md 中定义的事件相对应
@@ -21,6 +22,7 @@ export interface ServerToClientEvents {
     }) => void;
     'file:deleted': (data: { projectId: string; fileId: string }) => void;
     'preview:updated': (data: { projectId: string; url: string }) => void;
+    'game:generated': (data: { projectId: string; game: GameListItem }) => void; // Added game generated event
 }
 
 // 定义客户端可以发送到 WebSocket 服务的事件类型
@@ -72,19 +74,16 @@ export const initWebSocket = (
 > => {
     const globalIoInstance = getGlobalIo();
     if (globalIoInstance) {
-        console.log('Socket.io server already initialized (recovered from global in dev mode).');
         io = globalIoInstance; // Sync module-level io with global
         return globalIoInstance;
     }
 
     // 如果模块级 io 已经存在 (不太可能在 HMR 场景下先于 globalIoInstance)
     if (io) {
-        console.log('Socket.io server already initialized (module scope).');
         setGlobalIo(io); // Ensure global is also set if module scope somehow survived
         return io;
     }
 
-    console.log('Initializing new Socket.io server instance...');
     const newIoInstance = new Server<
         ClientToServerEvents,
         ServerToClientEvents,
@@ -108,31 +107,17 @@ export const initWebSocket = (
             socket.data.projectId = projectId;
             const roomName = `project:${projectId}`;
             socket.join(roomName);
-            console.log(
-                `Client ${socket.id} connected to namespace /agent and joined room ${roomName}`
-            );
-
             // 可以发送一个确认连接的消息
             // socket.emit('connected', { message: `Successfully connected to project ${projectId}` });
-        } else {
-            console.warn(
-                `Client ${socket.id} connected to namespace /agent without a projectId.`
-            );
-            // 可以选择断开没有 projectId 的连接
-            // socket.disconnect();
         }
 
         socket.on('disconnect', (reason) => {
-            console.log(
-                `Client ${socket.id} disconnected from namespace /agent. Reason: ${reason}`
-            );
             // 客户端断开连接时会自动离开其加入的所有房间
         });
 
         // 在这里可以添加其他特定于命名空间的事件监听器
         // 例如，如果客户端需要发送消息到服务器
         // socket.on('clientEvent', (data) => {
-        //   console.log(`Received clientEvent from ${socket.id}:`, data);
         //   // 处理事件，可能需要广播到房间内的其他客户端
         //   if (socket.data.projectId) {
         //     agentNamespace.to(`project:${socket.data.projectId}`).emit('serverEvent', { from: socket.id, data });
@@ -142,7 +127,6 @@ export const initWebSocket = (
 
     io = newIoInstance; // Set module-level io
     setGlobalIo(io);    // Set global-level io for dev HMR
-    console.log('Socket.io server initialized successfully and stored.');
     return io;
 };
 
@@ -157,7 +141,6 @@ export const getIo = (): Server<
     if (globalIoInstance) {
         // If module 'io' is out of sync (e.g. after HMR re-evaluation of the module), re-sync it.
         if (io !== globalIoInstance) {
-            // console.log("getIo: Syncing module 'io' with global instance from dev mode.");
             io = globalIoInstance;
         }
         return globalIoInstance;
@@ -167,7 +150,6 @@ export const getIo = (): Server<
     if (!io) {
         // This path should ideally not be hit if initWebSocket was called correctly.
         // If it is hit in dev, it means global._ioInstance was also not set or lost.
-        console.error("Critical: Socket.io instance 'io' is not initialized in module scope and no global instance found.");
         throw new Error(
             'Socket.io not initialized. Call initWebSocket(server) first and ensure it persists.'
         );
@@ -255,4 +237,14 @@ export const emitPreviewUpdated = (
         .of('/agent')
         .to(`project:${projectId}`)
         .emit('preview:updated', { projectId, ...data });
+};
+
+export const emitGameGenerated = (
+    projectId: string,
+    data: { game: GameListItem }
+) => {
+    getIo()
+        .of('/agent')
+        .to(`project:${projectId}`)
+        .emit('game:generated', { projectId, ...data });
 };

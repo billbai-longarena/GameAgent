@@ -1,0 +1,1 @@
+// Fallback JS for 问答游戏模板

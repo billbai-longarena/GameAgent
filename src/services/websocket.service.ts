@@ -7,9 +7,12 @@ import {
     emitFileUpdated,
     emitFileDeleted,
     emitPreviewUpdated,
+    // Import the new emitter
+    emitGameGenerated,
 } from '../lib/websocket/server';
 import { AgentAction, AgentLog, AgentState, DevelopmentStage } from '@/types/agent';
 import { File } from '@/types/file'; // Assuming File type is defined in @/types/file
+import { GameListItem } from '@/types/game'; // Import GameListItem
 
 export class WebSocketService {
     constructor() {
@@ -123,6 +126,15 @@ export class WebSocketService {
      */
     public sendPreviewUpdated(projectId: string, url: string): void {
         emitPreviewUpdated(projectId, { url });
+    }
+
+    /**
+     * 发送新游戏生成通知事件。
+     * @param projectId 项目ID。
+     * @param game 新生成的游戏详情。
+     */
+    public sendGameGenerated(projectId: string, game: GameListItem): void {
+        emitGameGenerated(projectId, { game });
     }
 }
 

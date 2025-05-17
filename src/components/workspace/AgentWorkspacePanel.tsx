@@ -58,7 +58,7 @@ const AgentWorkspacePanel: React.FC<AgentWorkspacePanelProps> = ({
                     文件变更
                 </button>
             </div>
-            <div className="flex-grow overflow-y-auto">
+            <div className="flex-1 overflow-y-auto">
                 {renderActivePanel()}
             </div>
         </div>

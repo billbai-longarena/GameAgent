@@ -2,28 +2,104 @@
 
 import React from 'react';
 import { AgentStatus, DevelopmentStage } from '@/types/agent'; // Assuming these types are available
+import { FiClipboard, FiLayout, FiCode, FiCheckCircle, FiZap, FiAward, FiPause, FiPlay, FiStopCircle, FiRefreshCw, FiPlayCircle } from 'react-icons/fi'; // Import icons for controls
 
-// Placeholder for child component props
+// Define the order of stages for the visual indicator
+const STAGES_ORDER: DevelopmentStage[] = [
+    DevelopmentStage.REQUIREMENT_ANALYSIS,
+    DevelopmentStage.DESIGN,
+    DevelopmentStage.CODING,
+    DevelopmentStage.TESTING,
+    DevelopmentStage.OPTIMIZATION,
+    DevelopmentStage.COMPLETED,
+];
+
 interface ProgressIndicatorProps {
     progress: number; // 0-100
-    currentStage?: DevelopmentStage; // Make optional to handle potential undefined initial state
+    currentStage?: DevelopmentStage;
 }
+
+const STAGE_ICONS: Record<DevelopmentStage, React.ElementType> = {
+    [DevelopmentStage.REQUIREMENT_ANALYSIS]: FiClipboard,
+    [DevelopmentStage.DESIGN]: FiLayout,
+    [DevelopmentStage.CODING]: FiCode,
+    [DevelopmentStage.TESTING]: FiCheckCircle,
+    [DevelopmentStage.OPTIMIZATION]: FiZap,
+    [DevelopmentStage.COMPLETED]: FiAward,
+};
+
+const STAGE_DISPLAY_NAMES: Record<DevelopmentStage, string> = {
+    [DevelopmentStage.REQUIREMENT_ANALYSIS]: '需求分析',
+    [DevelopmentStage.DESIGN]: '设计规划',
+    [DevelopmentStage.CODING]: '代码编写',
+    [DevelopmentStage.TESTING]: '测试调试',
+    [DevelopmentStage.OPTIMIZATION]: '优化完善',
+    [DevelopmentStage.COMPLETED]: '已完成',
+};
+
+
 const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({ progress, currentStage }) => {
-    const stageText = currentStage ? currentStage.replace('_', ' ').toUpperCase() : 'LOADING...';
+    const stageText = currentStage ? STAGE_DISPLAY_NAMES[currentStage] : '加载中...';
+    const currentStageIndex = currentStage ? STAGES_ORDER.indexOf(currentStage) : -1;
+
     return (
-        <div className="w-1/2">
-            <div className="text-xs text-gray-400 mb-0.5">
-                阶段: <span className="font-semibold text-gray-300">{stageText}</span> - {progress}%
+        <div className="w-full" title={`当前阶段: ${stageText}, 进度: ${progress}%`}>
+            <div className="text-xs text-gray-400 mb-1 flex justify-between">
+                <span>阶段: <span className="font-semibold text-gray-200">{stageText}</span></span>
+                <span className="font-semibold text-gray-200">{progress}%</span>
             </div>
-            <div className="w-full bg-gray-600 rounded-full h-1.5">
+            <div
+                className="w-full bg-gray-600 rounded-full h-2.5 relative flex items-center"
+                role="progressbar"
+                aria-valuenow={progress}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`进度: ${progress}% 阶段 ${stageText}`}
+            >
                 <div
-                    className="bg-blue-500 h-1.5 rounded-full transition-all duration-300 ease-out"
+                    className="bg-sky-500 h-2.5 rounded-full transition-all duration-300 ease-out"
                     style={{ width: `${progress}%` }}
                 ></div>
             </div>
+            <div className="flex justify-between text-xs text-gray-500 mt-2 px-0.5">
+                {STAGES_ORDER.map((stage, index) => {
+                    const IconComponent = STAGE_ICONS[stage];
+                    const displayName = STAGE_DISPLAY_NAMES[stage];
+                    const isActive = index <= currentStageIndex;
+                    const isCurrent = index === currentStageIndex;
+
+                    return (
+                        <div
+                            key={stage}
+                            className={`flex flex-col items-center relative ${isActive ? 'text-sky-400 font-medium' : 'text-gray-600'}`}
+                            title={displayName}
+                        >
+                            {/* Icon */}
+                            <div className={`relative z-10 p-1 rounded-full ${isCurrent ? 'bg-sky-500 text-white' : isActive ? 'bg-sky-600 text-sky-300' : 'bg-gray-700 text-gray-500'}`}>
+                                <IconComponent className={`w-3 h-3 ${isCurrent ? 'animate-pulse' : ''}`} />
+                            </div>
+                            {/* Stage Name (optional, if space allows or for tooltips) */}
+                            {/* <span className="mt-1 text-xxs">{displayName.substring(0,2)}</span> */}
+
+                            {/* Connecting line to the next icon */}
+                            {index < STAGES_ORDER.length - 1 && (
+                                <div
+                                    className={`absolute top-[calc(0.375rem+1px)] left-1/2 w-full h-0.5 transform -translate-y-1/2 z-0`}
+                                    style={{
+                                        left: 'calc(50% + 0.5rem)', // Start after the icon
+                                        width: 'calc(100% - 1rem)', // Span between icons
+                                    }}
+                                >
+                                    <div className={`h-full w-full ${index < currentStageIndex ? 'bg-sky-500' : 'bg-gray-600'}`}></div>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
-}; // Added semicolon
+};
 
 interface StageIndicatorProps {
     agentStatus: AgentStatus;
@@ -69,18 +145,57 @@ interface ControlButtonsProps {
 const ControlButtons: React.FC<ControlButtonsProps> = ({ agentStatus, onPause, onResume, onStop }) => {
     return ( // Explicit return and braces
         <div className="flex space-x-2">
+            {/* Pause Button */}
+            {/* Pause Button: Show if agent is actively working */}
             {(agentStatus === AgentStatus.THINKING || agentStatus === AgentStatus.CODING || agentStatus === AgentStatus.TESTING) && (
-                <button onClick={onPause} className="px-2.5 py-1 text-xs bg-yellow-600 hover:bg-yellow-500 rounded text-white">暂停</button>
+                <button
+                    onClick={onPause}
+                    className="flex items-center space-x-1 px-3 py-1.5 text-xs font-medium bg-yellow-600 hover:bg-yellow-500 rounded-md text-white shadow-sm transition-colors"
+                    title="暂停 Agent"
+                >
+                    <FiPause className="w-3 h-3" />
+                    <span>暂停</span>
+                </button>
             )}
+
+            {/* Resume Button: Show if agent is paused */}
             {agentStatus === AgentStatus.PAUSED && (
-                <button onClick={onResume} className="px-2.5 py-1 text-xs bg-green-600 hover:bg-green-500 rounded text-white">继续</button>
+                <button
+                    onClick={onResume}
+                    className="flex items-center space-x-1 px-3 py-1.5 text-xs font-medium bg-green-600 hover:bg-green-500 rounded-md text-white shadow-sm transition-colors"
+                    title="继续 Agent"
+                >
+                    <FiPlay className="w-3 h-3" />
+                    <span>继续</span>
+                </button>
             )}
-            {(agentStatus !== AgentStatus.IDLE && agentStatus !== AgentStatus.COMPLETED) && (
-                <button onClick={onStop} className="px-2.5 py-1 text-xs bg-red-600 hover:bg-red-500 rounded text-white">停止</button>
+
+            {/* Stop Button: Show if agent is actively working or paused */}
+            {(agentStatus === AgentStatus.THINKING || agentStatus === AgentStatus.CODING || agentStatus === AgentStatus.TESTING || agentStatus === AgentStatus.PAUSED) && (
+                <button
+                    onClick={onStop}
+                    className="flex items-center space-x-1 px-3 py-1.5 text-xs font-medium bg-red-600 hover:bg-red-500 rounded-md text-white shadow-sm transition-colors"
+                    title="停止当前任务"
+                >
+                    <FiStopCircle className="w-3 h-3" />
+                    <span>停止</span>
+                </button>
+            )}
+
+            {/* Start/Reset Button: Show if agent is IDLE, COMPLETED, or ERROR */}
+            {(agentStatus === AgentStatus.IDLE || agentStatus === AgentStatus.COMPLETED || agentStatus === AgentStatus.ERROR) && (
+                <button
+                    onClick={onStop} // Calling onStop here effectively resets the agent for a new task via backend logic
+                    className="flex items-center space-x-1 px-3 py-1.5 text-xs font-medium bg-sky-600 hover:bg-sky-500 rounded-md text-white shadow-sm transition-colors"
+                    title={agentStatus === AgentStatus.IDLE ? "准备开始新任务 (Agent将重置)" : "重置 Agent"}
+                >
+                    {agentStatus === AgentStatus.IDLE ? <FiPlayCircle className="w-3 h-3" /> : <FiRefreshCw className="w-3 h-3" />}
+                    <span>{agentStatus === AgentStatus.IDLE ? '新任务' : '重置'}</span>
+                </button>
             )}
         </div>
     );
-}; // Added semicolon
+};
 
 interface TimeEstimatorProps {
     estimatedTimeRemaining: number; // in seconds
@@ -119,16 +234,23 @@ const StatusControlBar: React.FC<StatusControlBarProps> = ({
     onStop,
 }) => {
     return (
-        <div className="flex items-center justify-between p-3 border-t border-gray-700 bg-gray-850 text-white text-sm">
-            <div className="flex items-center space-x-4">
+        <div className="flex flex-col sm:flex-row items-center sm:justify-between p-2.5 border-t border-gray-700 bg-gray-800 text-white text-sm shadow-inner gap-2 sm:gap-0">
+            {/* Left section: Status and Time - takes full width on smallest screens, then shrinks */}
+            <div className="flex items-center justify-between sm:justify-start w-full sm:w-auto space-x-3">
                 <StageIndicator agentStatus={agentStatus} />
                 <TimeEstimator estimatedTimeRemaining={estimatedTimeRemaining} />
             </div>
-            <ProgressIndicator progress={progress} currentStage={currentStage} />
-            <ControlButtons agentStatus={agentStatus} onPause={onPause} onResume={onResume} onStop={onStop} />
+            {/* Center section: Progress Indicator - takes full width on smallest screens */}
+            <div className="w-full sm:flex-grow mx-0 sm:mx-4 my-2 sm:my-0">
+                <ProgressIndicator progress={progress} currentStage={currentStage} />
+            </div>
+            {/* Right section: Control Buttons - takes full width on smallest screens, then shrinks */}
+            <div className="w-full sm:w-auto flex justify-center sm:justify-end">
+                <ControlButtons agentStatus={agentStatus} onPause={onPause} onResume={onResume} onStop={onStop} />
+            </div>
         </div>
     );
-}; // Added semicolon
+};
 
 
 export default StatusControlBar;

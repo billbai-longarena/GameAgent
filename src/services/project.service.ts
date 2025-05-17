@@ -97,10 +97,17 @@ export class ProjectService {
         }
 
         const originalProject = projects[projectIndex];
+
+        // 确保 updatedAt 与 createdAt 不同，通过增加一毫秒
+        const updateTime = new Date();
+        if (updateTime.toISOString() === originalProject.createdAt) {
+            updateTime.setMilliseconds(updateTime.getMilliseconds() + 1);
+        }
+
         const updatedProject = {
             ...originalProject,
             ...updates,
-            updatedAt: new Date().toISOString(),
+            updatedAt: updateTime.toISOString(),
         };
         projects[projectIndex] = updatedProject;
         console.log(`ProjectService: Updated project ${updatedProject.id}`);
@@ -121,6 +128,19 @@ export class ProjectService {
 
     // TODO: Add methods for managing project files (linking file IDs, etc.) if project stores file list.
     // TODO: Implement persistence (e.g., writing to a JSON file or database)
+
+    /**
+     * Resets the projects array. This method is intended for testing purposes only.
+     * @internal
+     */
+    resetForTesting(): void {
+        if (process.env.NODE_ENV === 'test') {
+            projects = [];
+            console.log('ProjectService: Reset in-memory store for testing');
+        } else {
+            console.warn('ProjectService: resetForTesting should only be called in test environment');
+        }
+    }
 }
 
 export const projectService = new ProjectService();

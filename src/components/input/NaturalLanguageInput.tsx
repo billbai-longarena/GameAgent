@@ -51,9 +51,11 @@ const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({
     ];
 
     return (
-        <div className="flex flex-col p-4 border-t border-gray-700 bg-gray-800 text-white">
+        <div className="flex flex-col p-2 sm:p-4 border-t border-gray-700 bg-gray-800 text-white">
             {/* Message History Area - Placeholder */}
-            <div className="flex-grow h-40 overflow-y-auto mb-2 p-2 border border-gray-600 rounded bg-gray-700 hidden">
+            {/* Ensure this area is also responsive if/when enabled */}
+            {/* Message History Area - Make visible */}
+            <div className="flex-grow h-40 overflow-y-auto mb-1 sm:mb-2 p-2 border border-gray-600 rounded bg-gray-700">
                 {messageHistory.map((msg) => (
                     <div key={msg.id} className={`mb-1 p-1 rounded text-sm ${msg.sender === 'user' ? 'text-right' : 'text-left'}`}>
                         <span className={`px-2 py-1 inline-block rounded ${msg.sender === 'user' ? 'bg-blue-600' : 'bg-gray-600'}`}>
@@ -69,23 +71,25 @@ const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({
                     value={inputText}
                     onChange={handleInputChange}
                     onKeyPress={handleKeyPress}
-                    placeholder="输入您的指令，例如：创建一个关于恐龙的问答游戏..."
-                    className="flex-grow p-3 text-sm bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 resize-none placeholder-gray-400"
-                    rows={3}
+                    placeholder="输入您的指令..." // Shorter placeholder for small screens
+                    className="flex-grow p-2 sm:p-3 text-sm bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 resize-none placeholder-gray-400"
+                    rows={2} // Default to 2 rows for smaller screens
+                    // sm:rows={3} // Increase to 3 rows on sm screens and up if desired, or manage dynamically
                     disabled={isProcessing}
                 />
                 <button
                     onClick={handleSubmit}
                     disabled={isProcessing || !inputText.trim()}
-                    className="px-6 py-3 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-800 disabled:bg-gray-500 disabled:cursor-not-allowed"
+                    className="px-4 py-2 sm:px-6 sm:py-3 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-800 disabled:bg-gray-500 disabled:cursor-not-allowed"
                 >
                     发送
                 </button>
             </div>
 
             {/* Quick Commands Area - Placeholder */}
-            <div className="mt-2 flex space-x-2 hidden">
-                <span className="text-xs text-gray-400 pt-1">快捷指令:</span>
+            {/* Quick Commands Area - Make visible */}
+            <div className="mt-1 sm:mt-2 flex flex-wrap gap-2"> {/* Use flex-wrap and gap for better responsiveness */}
+                <span className="text-xs text-gray-400 pt-1 self-center">快捷指令:</span> {/* Align label vertically */}
                 {quickCommands.map(cmd => (
                     <button
                         key={cmd.id}

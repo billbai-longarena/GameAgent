@@ -3,10 +3,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import ProjectExplorerPanel from '@/components/explorer/ProjectExplorerPanel';
-import AgentWorkspacePanel from '@/components/workspace/AgentWorkspacePanel';
-import { AgentState, AgentStatus, DevelopmentStage, ActionType, LogLevel } from '@/types/agent'; // Added LogLevel
-import { File as ProjectFile, FileChange, FileType } from '@/types/file';
+import AIConversationHistoryPanel from '@/components/workspace/AIConversationHistoryPanel';
+import { AgentState, AgentStatus, DevelopmentStage, ActionType, LogLevel } from '@/types/agent';
+import { FileChange, FileType } from '@/types/file'; // Removed ProjectFile import as it's not directly used here for the list
+import { GameListItem } from '@/types/game'; // Import GameListItem
 import io, { Socket } from 'socket.io-client';
+import GamePreviewPanel from '@/components/preview/GamePreviewPanel';
+import { FiMessageSquare, FiMonitor, FiFolder } from 'react-icons/fi'; // Icons for toggles
 
 // Dummy data for initial rendering
 const initialAgentState: AgentState = {
@@ -15,34 +18,95 @@ const initialAgentState: AgentState = {
   currentTask: '等待指令...',
   thinking: 'Agent 已准备就绪。',
   action: { type: ActionType.IDLE, description: 'Agent is idle', timestamp: new Date() },
-  stage: DevelopmentStage.CODING, // Example, should be dynamic
+  stage: DevelopmentStage.CODING,
   progress: 0,
   status: AgentStatus.IDLE,
-  logs: [{ id: 'log1', message: 'Agent initialized.', level: LogLevel.INFO, timestamp: new Date() }], // Use LogLevel.INFO
+  logs: [{ id: 'log1', message: 'Agent initialized.', level: LogLevel.INFO, timestamp: new Date() }],
+  thoughtProcess: [{
+    id: crypto.randomUUID(),
+    stage: ActionType.INITIALIZE,
+    description: 'Agent initialized and ready.',
+    status: 'completed',
+    timestamp: new Date().toISOString(),
+  }],
   estimatedTimeRemaining: 0,
 };
 
-const dummyProjectFiles: ProjectFile[] = [
-  { id: 'f1', projectId: 'project-123', name: 'README.md', path: 'README.md', type: FileType.DOCUMENT, content: '# My Game Project', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-  { id: 'f2', projectId: 'project-123', name: 'game.ts', path: 'src/game.ts', type: FileType.SOURCE_CODE, content: 'console.log("Hello Game!");', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-  { id: 'f3', projectId: 'project-123', name: 'styles.css', path: 'src/styles.css', type: FileType.STYLE, content: 'body { margin: 0; }', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+// Initial mock game items, including templates and a placeholder for a generated game
+const initialGameList: GameListItem[] = [
+  {
+    id: 'quiz-template',
+    name: '问答游戏模板',
+    description: '一个基础的问答游戏，支持选择题和判断题。',
+    version: '1.0.0',
+    previewImageUrl: '/templates/quiz/quiz-preview.png',
+    entryPoint: '/templates/quiz/index.html',
+    tags: ['教育', '知识测验'],
+    author: 'GameAgent Team',
+    isGenerated: false,
+  },
+  {
+    id: 'matching-template',
+    name: '匹配游戏模板',
+    description: '一个基础的匹配游戏，将项目进行配对。',
+    version: '1.0.0',
+    previewImageUrl: '/templates/matching/matching-preview.png',
+    entryPoint: '/templates/matching/index.html',
+    tags: ['教育', '记忆', '配对'],
+    author: 'GameAgent Team',
+    isGenerated: false,
+  },
+  {
+    id: 'sorting-template',
+    name: '排序游戏模板',
+    description: '一个基础的排序游戏，用户可以将项目拖动到正确的顺序。',
+    version: '1.0.0',
+    previewImageUrl: '/templates/sorting/sorting-preview.png',
+    entryPoint: '/templates/sorting/index.html',
+    tags: ['教育', '逻辑', '排序'],
+    author: 'GameAgent Team',
+    isGenerated: false,
+  },
+  // Example of a generated game item (would be added dynamically)
+  // {
+  //   id: 'generated-game-1',
+  //   name: '我的第一个AI生成游戏',
+  //   description: '这是一个通过自然语言指令生成的游戏。',
+  //   entryPoint: '/generated_games/project-123/my-first-ai-game/index.html', // Example path
+  //   previewImageUrl: '/generated_games/project-123/my-first-ai-game/preview.png', // Example path
+  //   isGenerated: true,
+  //   generatedAt: new Date().toISOString(),
+  //   tags: ['AI生成'],
+  // },
 ];
 
-// Placeholder for GamePreviewPanel
-const GamePreviewPanelPlaceholder: React.FC = () => (
-  <div className="flex-grow p-4 bg-gray-700 rounded-lg shadow flex items-center justify-center">
-    <p className="text-gray-400">游戏预览区</p>
-  </div>
-);
 
 export default function HomePage() {
   const [agentState, setAgentState] = useState<AgentState>(initialAgentState);
-  const [projectFiles, setProjectFiles] = useState<ProjectFile[]>(dummyProjectFiles);
-  const [fileChanges, setFileChanges] = useState<FileChange[]>([]);
+  const [gameList, setGameList] = useState<GameListItem[]>(initialGameList);
+  const [fileChanges, setFileChanges] = useState<FileChange[]>([]); // Keep for file change panel if needed elsewhere
   const [socket, setSocket] = useState<Socket | null>(null);
-  const currentProjectId = 'project-123'; // Example project ID
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const currentProjectId = 'project-123'; // Should be dynamic in a real app
 
-  // WebSocket connection and event handling
+  // States for panel visibility on small screens
+  const [showAIHistoryPanel, setShowAIHistoryPanel] = useState(true); // Default to true for small screens
+  const [showGamePreviewPanel, setShowGamePreviewPanel] = useState(false);
+  const [showFilesPanel, setShowFilesPanel] = useState(false); // This now controls "Game List" panel
+
+  const handlePreviewGame = useCallback((gameUrl: string) => {
+    const fullUrl = gameUrl.startsWith('/') ? gameUrl : `/${gameUrl}`;
+    console.log(`Previewing game: ${fullUrl}`);
+    setPreviewUrl(fullUrl);
+    // On small screens, automatically switch to the preview panel when a game is selected
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setShowGamePreviewPanel(true);
+      setShowAIHistoryPanel(false);
+      setShowFilesPanel(false);
+    }
+  }, []);
+
+  // WebSocket connection and event listeners
   useEffect(() => {
     if (typeof window !== "undefined") {
       const newSocket: Socket = io("http://localhost:3000/agent", {
@@ -51,70 +115,84 @@ export default function HomePage() {
       });
       setSocket(newSocket);
 
-      newSocket.on("connect", () => {
-        console.log("Connected to WebSocket server in /agent namespace for project:", currentProjectId);
-        // No need to emit joinRoom if query parameter handles it,
-        // but server.ts implementation might require it.
-        // newSocket.emit("joinRoom", `project:${currentProjectId}`); 
-      });
+      newSocket.on("connect", () => console.log("Connected to WebSocket server for project:", currentProjectId));
+      newSocket.on("disconnect", (reason: Socket.DisconnectReason) => console.log("Disconnected from WebSocket server:", reason));
+      newSocket.on("connect_error", (err: Error) => console.error("WebSocket connection error:", err.message));
 
-      newSocket.on("disconnect", (reason: Socket.DisconnectReason) => {
-        console.log("Disconnected from WebSocket server:", reason);
-      });
-
-      newSocket.on("connect_error", (err: Error) => {
-        console.error("WebSocket connection error:", err.message);
-      });
-
-      // Listen for agent state updates (assuming a single event for the whole state)
-      // This is a simplified assumption. In reality, you might get granular updates.
-      newSocket.on('agent:state', (newState: AgentState) => { // Assuming 'agent:state' is the event name
+      // Agent state updates
+      newSocket.on('agent:state', (newState: AgentState) => {
         console.log('Received agent:state update:', newState);
         setAgentState(newState);
       });
-      // Fallback: listen to individual parts if no single 'agent:state' event
       newSocket.on('agent:thinking', (data: { thinking: string }) => setAgentState(prev => ({ ...prev, thinking: data.thinking })));
       newSocket.on('agent:action', (data: { action: AgentState['action'] }) => setAgentState(prev => ({ ...prev, action: data.action })));
       newSocket.on('agent:progress', (data: { stage: DevelopmentStage, progress: number, timeRemaining: number }) =>
         setAgentState(prev => ({ ...prev, stage: data.stage, progress: data.progress, estimatedTimeRemaining: data.timeRemaining }))
       );
       newSocket.on('agent:log', (data: { log: AgentState['logs'][0] }) =>
-        setAgentState(prev => ({ ...prev, logs: [...prev.logs, data.log].slice(-100) })) // Keep last 100 logs
+        setAgentState(prev => ({ ...prev, logs: [...(prev.logs || []), data.log].slice(-100) }))
       );
-
-
-      // File change events
-      newSocket.on('file:created', (data: { file: ProjectFile }) => {
-        console.log('File created:', data.file);
-        setProjectFiles(prev => [...prev, data.file]);
-        const newChange: FileChange = { operation: 'create', file: data.file, diff: `+ ${data.file.name}` };
-        setFileChanges(prev => [...prev, newChange].slice(-10));
+      newSocket.on('agent:thoughtProcessUpdate', (data: { thoughtProcess: AgentState['thoughtProcess'] }) => {
+        setAgentState(prev => ({ ...prev, thoughtProcess: data.thoughtProcess }));
       });
-      newSocket.on('file:updated', (data: { fileId: string, changes: any, file?: ProjectFile }) => { // file might be the full updated file
-        console.log('File updated:', data);
-        if (data.file) {
-          setProjectFiles(prev => prev.map(f => f.id === data.file!.id ? data.file! : f));
+
+      // File updates (can be kept if FileChangesPanel is still used, or simplified if not)
+      // For now, we'll keep them as they might be useful for the FileChangesPanel.
+      // If ProjectExplorerPanel no longer shows individual files, these might not directly update that panel.
+      newSocket.on('file:created', (data: { file: { id: string, name: string, path: string, type: FileType, content: string } }) => {
+        console.log('File created (event):', data.file);
+        // This no longer directly updates ProjectExplorerPanel's file list,
+        // but FileChangesPanel might still use this.
+        const newChange: FileChange = {
+          id: crypto.randomUUID(), operation: 'create', file: data.file,
+          diff: `+ ${data.file.name}`, timestamp: new Date().toISOString(),
+        };
+        setFileChanges(prev => [...prev, newChange].slice(-20));
+      });
+      newSocket.on('file:updated', (data: { fileId: string, changes: any, file?: { id: string, name: string, path: string } }) => {
+        console.log('File updated (event):', data);
+        const updatedFileDisplay = data.file ? { id: data.file.id, path: data.file.path, name: data.file.name } : { id: data.fileId, path: data.fileId, name: 'Unknown File' };
+        const newChange: FileChange = {
+          id: crypto.randomUUID(), operation: 'update', file: updatedFileDisplay,
+          diff: typeof data.changes === 'string' ? data.changes : JSON.stringify(data.changes),
+          timestamp: new Date().toISOString(),
+        };
+        setFileChanges(prev => [...prev, newChange].slice(-20));
+      });
+      newSocket.on('file:deleted', (data: { fileId: string, filePath?: string }) => {
+        console.log('File deleted (event):', data.fileId);
+        const newChange: FileChange = {
+          id: crypto.randomUUID(), operation: 'delete',
+          file: { id: data.fileId, path: data.filePath || data.fileId, name: data.filePath || data.fileId },
+          timestamp: new Date().toISOString(),
+        };
+        setFileChanges(prev => [...prev, newChange].slice(-20));
+      });
+
+      // Game generated event - NEW
+      newSocket.on('game:generated', (newGame: GameListItem) => {
+        console.log('New game generated:', newGame);
+        setGameList(prev => [newGame, ...prev]); // Add new game to the top of the list
+        // Optionally, auto-preview the new game
+        // handlePreviewGame(newGame.entryPoint);
+      });
+
+      // Preview updates (can be for templates or generated games)
+      newSocket.on('preview:updated', (data: { projectId: string, url: string }) => {
+        if (data.projectId === currentProjectId) {
+          console.log('Received preview:updated event:', data.url);
+          setPreviewUrl(data.url);
         }
-        const newChange: FileChange = { operation: 'update', file: { id: data.fileId, path: data.file?.path || data.fileId }, diff: JSON.stringify(data.changes) };
-        setFileChanges(prev => [...prev, newChange].slice(-10));
       });
-      newSocket.on('file:deleted', (data: { fileId: string }) => {
-        console.log('File deleted:', data.fileId);
-        const deletedFile = projectFiles.find(f => f.id === data.fileId);
-        setProjectFiles(prev => prev.filter(f => f.id !== data.fileId));
-        const newChange: FileChange = { operation: 'delete', file: { id: data.fileId, path: deletedFile?.path || data.fileId } };
-        setFileChanges(prev => [...prev, newChange].slice(-10));
-      });
-
 
       return () => {
         console.log("Disconnecting WebSocket...");
         newSocket.disconnect();
       };
     }
-  }, [currentProjectId]); // Reconnect if projectId changes
+  }, [currentProjectId]); // Only re-run if projectId changes
 
-  // Fetch initial agent state
+  // Fetch initial state (optional, if WebSocket provides it on connect)
   useEffect(() => {
     const fetchAgentState = async () => {
       try {
@@ -129,13 +207,18 @@ export default function HomePage() {
         console.error('Error fetching initial agent state:', error);
       }
     };
-    fetchAgentState();
+    // fetchAgentState(); // Uncomment if needed
   }, [currentProjectId]);
-
 
   const handleSendMessage = useCallback(async (messageText: string) => {
     console.log('Sending message to agent:', messageText);
     setAgentState(prev => ({ ...prev, status: AgentStatus.THINKING, thinking: `Processing: ${messageText}` }));
+    // On small screens, ensure AI panel is visible and others are not when sending a message
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setShowAIHistoryPanel(true);
+      setShowGamePreviewPanel(false);
+      setShowFilesPanel(false);
+    }
     try {
       const response = await fetch('/api/agent/control', {
         method: 'POST',
@@ -147,7 +230,6 @@ export default function HomePage() {
         console.error('Failed to send message to agent:', errorData);
         setAgentState(prev => ({ ...prev, status: AgentStatus.ERROR, thinking: `Error: ${errorData.error || 'Failed to start agent'}` }));
       }
-      // Agent state will be updated via WebSocket
     } catch (error) {
       console.error('Error sending message to agent:', error);
       setAgentState(prev => ({ ...prev, status: AgentStatus.ERROR, thinking: `Error: ${(error as Error).message}` }));
@@ -165,14 +247,15 @@ export default function HomePage() {
       if (!response.ok) {
         const errorData = await response.json();
         console.error(`Failed to ${controlAction} agent:`, errorData);
-        // Optionally update local state to reflect error, though WebSocket should be source of truth
       }
-      // Agent state will be updated via WebSocket
     } catch (error) {
       console.error(`Error sending ${controlAction} to agent:`, error);
     }
   }, [currentProjectId]);
 
+  // Toggle functions are no longer needed as buttons are removed.
+  // Panel visibility on small screens is now controlled by other interactions
+  // like handlePreviewGame or handleSendMessage.
 
   return (
     <MainLayout
@@ -185,20 +268,46 @@ export default function HomePage() {
       onResumeAgent={() => handleAgentControl('resume')}
       onStopAgent={() => handleAgentControl('stop')}
     >
-      <div className="flex flex-1 p-1 space-x-1 overflow-hidden">
-        {/* Left Panel: Project Explorer */}
-        <div className="w-1/5 min-w-[200px] max-w-[300px] shrink-0">
-          <ProjectExplorerPanel projectFiles={projectFiles} />
-        </div>
+      {/* Main content area using Flexbox and Tailwind responsive classes */}
+      <div className="flex flex-col h-full w-full overflow-hidden">
 
-        {/* Center Panel: Agent Workspace */}
-        <div className="flex-1 flex flex-col min-w-0"> {/* min-w-0 is important for flex children to shrink */}
-          <AgentWorkspacePanel agentState={agentState} fileChanges={fileChanges} />
-        </div>
+        {/* Toggle buttons for small screens are removed */}
 
-        {/* Right Panel: Game Preview (Placeholder) */}
-        <div className="w-1/3 min-w-[300px] max-w-[500px] shrink-0">
-          <GamePreviewPanelPlaceholder />
+        {/* Layout container */}
+        <div className="flex flex-1 overflow-hidden p-1 gap-2">
+          {/* Left Panel: AI Conversation History */}
+          {/* On small screens, visible if showAIHistoryPanel is true. Always visible on md+ */}
+          <div className={`
+            ${showAIHistoryPanel ? 'block w-full h-full' : 'hidden'}
+            md:block md:w-1/3 md:min-w-0 md:h-full overflow-y-auto bg-gray-850 rounded
+          `}>
+            <AIConversationHistoryPanel
+              agentState={agentState}
+              fileChanges={fileChanges} // FileChangesPanel is part of AIConversationHistoryPanel
+              onSendMessage={handleSendMessage}
+            />
+          </div>
+
+          {/* Center Panel: Game Preview */}
+          {/* On small screens, visible if showGamePreviewPanel is true AND showAIHistoryPanel and showFilesPanel are false. Always visible on md+ */}
+          <div className={`
+            ${(showAIHistoryPanel || showFilesPanel) ? 'hidden' : showGamePreviewPanel ? 'block w-full h-full' : 'hidden'}
+            md:block md:w-1/3 md:min-w-0 md:h-full overflow-y-auto bg-gray-850 rounded
+          `}>
+            <GamePreviewPanel projectId={currentProjectId} previewUrl={previewUrl} />
+          </div>
+
+          {/* Right Panel: Game List (ProjectExplorerPanel repurposed) */}
+          {/* On small screens, visible if showFilesPanel is true. Always visible on md+ */}
+          <div className={`
+            ${showFilesPanel ? 'block w-full h-full' : 'hidden'}
+            md:block md:w-1/3 md:min-w-0 md:h-full overflow-y-auto bg-gray-850 rounded
+          `}>
+            <ProjectExplorerPanel
+              gameItems={gameList}
+              onPreviewGame={handlePreviewGame}
+            />
+          </div>
         </div>
       </div>
     </MainLayout>

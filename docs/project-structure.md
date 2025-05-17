@@ -220,6 +220,7 @@ gameAgent/
     "prettier": "^3.0.3",
     "jest": "^29.7.0",
     "@testing-library/react": "^14.0.0",
+    "jest-environment-jsdom": "^29.7.0", // Or the version you installed
     "cypress": "^14.3.3",
     "postcss": "^8.4.31",
     "autoprefixer": "^10.4.16"

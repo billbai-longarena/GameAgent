@@ -210,23 +210,41 @@ GameAgent项目将采用模块化、渐进式开发方法，分为以下几个�
   - 游戏配置接口 (通过 `items.json` 和 `script.js` 实现)
   - 示例游戏 (通过 `items.json` 提供)
 
-### 任务3.3：基础游戏模板 - 排序游戏（15次交互）
+### 任务3.3：基础游戏模板 - 排序游戏（15次交互） - 已完成
 - **目标**：创建排序游戏模板
 - **具体任务**：
-  - 设计排序游戏模板结构
-  - 创建基本HTML/CSS/JS模板
-  - 实现拖拽排序功能
-  - 开发验证和反馈系统
-  - 创建游戏配置接口
+    - 设计排序游戏模板结构 (`manifest.json`)
+    - 创建 `gagent/public/templates/sorting/index.html`
+    - 创建 `gagent/public/templates/sorting/style.css`
+    - 创建 `gagent/public/templates/sorting/script.js` (实现拖拽排序、验证和反馈)
+    - 创建 `gagent/public/templates/sorting/elements.json` (游戏配置接口和示例)
 - **可交付成果**：
-  - 功能完整的排序游戏模板
-  - 游戏配置接口
-  - 示例游戏
+    - 功能完整的排序游戏模板 (`gagent/public/templates/sorting/`)
+    - 游戏配置接口 (通过 `elements.json` 和 `script.js` 实现)
+    - 示例游戏 (通过 `elements.json` 提供)
 
-### 任务3.4：游戏生成器核心实现（20次交互）
+### 任务3.4：游戏模板浏览与体验入口（15次交互） - 已完成
+- **目标**：为用户提供一个直观的界面，以便浏览所有可用的基础游戏模板，并能直接体验每个模板的示例游戏。
+- **具体任务**：
+    - 定义 `TemplateManifest` 接口 (`gagent/src/types/template.ts`)。
+    - 创建 `gagent/src/components/explorer/TemplateExplorerPanel.tsx` 组件，用于展示模板卡片。
+    - 创建 `gagent/src/components/preview/GamePreviewPanel.tsx` 组件，用于在 iframe 中加载和显示模板示例。
+    - 修改 `gagent/src/components/explorer/ProjectExplorerPanel.tsx` 以集成 `TemplateExplorerPanel` 作为标签页。
+    - 修改 `gagent/src/app/page.tsx` 以集成 `GamePreviewPanel` 并处理模板预览请求。
+- **可交付成果**：
+    - `TemplateManifest` 接口。
+    - 功能性的 `TemplateExplorerPanel` 组件。
+    - 功能性的 `GamePreviewPanel` 组件。
+    - `ProjectExplorerPanel` 中包含模板浏览标签页。
+    - 用户可以通过UI启动并体验每个基础游戏模板的示例。
+    - 设计文档中 `manifest.json` 的规范已确认。
+
+### 任务3.5：游戏生成器核心实现（20次交互） - 基础结构已完成
 - **目标**：开发游戏代码生成系统
 - **具体任务**：
-  - 创建game/generator.ts
+    - 创建 `gagent/src/lib/game/generator.ts` (GameGenerator 类，包含模板选择和游戏文件生成占位符逻辑)。
+    - 导出 `GameRequirements`, `Customizations`, `GeneratedGame` 接口。
+    - 将 `GameGenerator` 集成到 `AgentController` (`gagent/src/lib/agent/controller.ts`)。
   - 实现模板选择逻辑
   - 开发游戏逻辑生成系统
   - 实现UI组件生成
@@ -237,205 +255,192 @@ GameAgent项目将采用模块化、渐进式开发方法，分为以下几个�
   - 模板选择系统
   - 游戏代码生成功能
 
-### 任务3.5：游戏预览功能实现（15次交互）
-- **目标**：创建游戏预览系统
-- **具体任务**：
-  - 实现preview.service.ts
-  - 创建GamePreviewPanel组件
-  - 开发iframe容器
-  - 实现预览刷新机制
-  - 创建设备模拟功能
-  - 开发预览控制组件
+    - `AgentController` 能够调用 `GameGenerator`。
 - **可交付成果**：
-  - 完整的预览服务
-  - 预览面板组件
-  - 预览控制功能
+    - `GameGenerator` 类的骨架。
+    - `AgentController` 中集成了 `GameGenerator`。
 
-### 任务3.6：游戏资源管理（10次交互）
+### 任务3.6：游戏预览功能实现（15次交互） - 主要部分已在任务3.4中完成
+- **目标**：创建游戏预览系统 (主要针对AI生成的游戏实例，同时支持模板示例预览)
+- **具体任务**：
+    - 创建 `gagent/src/services/preview.service.ts` (PreviewService 类骨架)。
+    - `GamePreviewPanel.tsx` 已在任务3.4中创建并集成。
+    - iframe容器、刷新机制已在 `GamePreviewPanel` 中实现。
+- **可交付成果**：
+    - `PreviewService` 类的骨架。
+    - `GamePreviewPanel` 组件能够显示指定URL的内容。
+
+### 任务3.7：游戏资源管理（10次交互） - 初步概念已实现
 - **目标**：实现游戏资源的生成和管理
 - **具体任务**：
-  - 创建资源生成逻辑
-  - 实现资源存储和访问
-  - 开发资源优化功能
-  - 创建资源类型定义
-  - 实现资源引用系统
+    - 在 `GameGenerator` 中添加对模板 `previewImageUrl` 的概念性处理，将其作为生成文件列表的一部分。
 - **可交付成果**：
-  - 资源管理系统
-  - 资源生成功能
-  - 资源优化功能
+    - `GameGenerator` 在生成游戏文件列表时会包含预览图像的引用。
+    - （注意：实际的图像文件生成、存储、优化等高级功能尚未实现）
 
-### 任务3.7：游戏测试系统（10次交互）
+### 任务3.8：游戏测试系统（10次交互） - 基础骨架已完成
 - **目标**：创建游戏自动测试功能
 - **具体任务**：
-  - 实现自动测试生成
-  - 创建测试执行功能
-  - 开发测试报告生成
-  - 实现基本的错误检测
-  - 创建测试反馈系统
+    - 创建 `gagent/src/lib/game/tester.ts` (GameTester 类，包含测试用例生成和执行的占位符逻辑)。
+    - 定义 `TestResult` 和 `TestCase` 接口。
 - **可交付成果**：
-  - 自动测试生成器
-  - 测试执行系统
-  - 测试报告功能
+    - `GameTester` 类的骨架，能够生成和运行非常基础的测试用例。
 
 ## 阶段4：用户界面完善
 
-### 任务4.1：思考过程面板优化（15次交互）
+### 任务4.1：思考过程面板优化（15次交互） - 已完成
 - **目标**：增强思考过程的可视化
 - **具体任务**：
-  - 优化ThinkingProcessPanel组件
-  - 实现结构化思考步骤展示
-  - 添加思考阶段标记
-  - 开发决策理由高亮
-  - 实现展开/折叠功能
-  - 添加动画效果
+    - 在 `gagent/src/types/agent.ts` 中定义 `ThoughtStage` 枚举和 `ThoughtStep` 接口，并更新 `AgentState`。
+    - 修改 `AgentController` (`gagent/src/lib/agent/controller.ts`) 以使用 `ThoughtStep` 结构，包括初始化 `thoughtProcess` 和添加 `addThoughtStep` 方法。
+    - 在 `AgentController` 的关键方法中调用 `addThoughtStep`。
+    - 更新 `ThinkingProcessPanel` (`gagent/src/components/workspace/ThinkingProcessPanel.tsx`) 以渲染 `agentState.thoughtProcess` 数组，包括阶段、描述、状态和时间戳。
+    - 安装 `date-fns` 用于时间戳格式化。
 - **可交付成果**：
-  - 增强的思考过程面板
-  - 结构化展示
-  - 交互功能
+    - 更新的 `AgentState` 类型定义。
+    - `AgentController` 开始记录结构化的思考步骤。
+    - `ThinkingProcessPanel` 能够展示结构化的思考步骤列表（已确认组件实现）。
 
-### 任务4.2：执行操作面板优化（15次交互）
+### 任务4.2：执行操作面板优化（15次交互） - 已完成
 - **目标**：增强执行操作的可视化
 - **具体任务**：
-  - 优化ActionExecutionPanel组件
-  - 实现命令行风格界面
-  - 添加操作类型图标
-  - 开发时间戳显示
-  - 实现状态指示
-  - 添加动画效果
+    - 修改 `ActionExecutionPanel.tsx` (`gagent/src/components/workspace/ActionExecutionPanel.tsx`)。
+    - 实现基于日志的操作历史记录展示。
+    - 为不同的 `ActionType` 添加图标。
+    - 根据日志级别显示状态。
+    - 使用 `date-fns` 格式化时间戳。
+    - 调整样式以获得更清晰的类命令行输出。
 - **可交付成果**：
-  - 增强的执行操作面板
-  - 视觉指示器
-  - 状态反馈
+    - 增强的 `ActionExecutionPanel`，能更清晰地展示操作历史、类型和状态。
 
-### 任务4.3：文件变更面板优化（15次交互）
+### 任务4.3：文件变更面板优化（15次交互） - 初步完成
 - **目标**：增强文件变更的可视化
 - **具体任务**：
-  - 优化FileChangesPanel组件
-  - 实现差异对比视图
-  - 添加文件树导航
-  - 开发变更类型颜色编码
-  - 实现代码语法高亮
-  - 添加动画效果
+    - 更新 `FileChange` 类型 (`gagent/src/types/file.ts`) 添加 `id` 和 `timestamp`。
+    - 更新 `page.tsx` (`gagent/src/app/page.tsx`) 以在创建 `FileChange` 对象时填充这些新属性。
+    - 修改 `FileChangesPanel.tsx` (`gagent/src/components/workspace/FileChangesPanel.tsx`) 以使用新属性，并改进了视觉样式和时间戳格式化。
 - **可交付成果**：
-  - 增强的文件变更面板
-  - 差异对比功能
-  - 视觉指示器
+    - 更新的 `FileChange` 类型。
+    - `FileChangesPanel` 能够正确显示文件变更的时间戳和唯一键，并具有改进的UI。
+    - （注意：完整的diff视图和代码语法高亮尚未实现）
 
-### 任务4.4：游戏预览面板优化（10次交互）
+### 任务4.4：游戏预览面板优化（10次交互） - 已完成
 - **目标**：增强游戏预览体验
 - **具体任务**：
-  - 优化GamePreviewPanel组件
-  - 改进iframe容器样式
-  - 添加加载状态指示器
-  - 开发全屏切换功能
-  - 实现设备模拟选择器
-  - 添加动画效果
+    - 修改 `GamePreviewPanel.tsx` (`gagent/src/components/preview/GamePreviewPanel.tsx`)。
+    - 添加全屏切换按钮和功能。
+    - 添加设备模拟选择器 (桌面, 平板, 手机) 并调整iframe样式（基础模拟）。
+    - 改进了控制栏的布局。
 - **可交付成果**：
-  - 增强的预览面板
-  - 全屏和设备模拟
-  - 加载指示器
+    - `GamePreviewPanel` 包含全屏切换和基本的设备模拟功能。
 
-### 任务4.5：项目资源面板优化（10次交互）
+### 任务4.5：项目资源面板优化（10次交互） - 主要部分已完成
 - **目标**：增强项目资源浏览体验
 - **具体任务**：
-  - 优化ProjectExplorerPanel组件
-  - 改进FileTree组件样式
-  - 添加文件类型图标
-  - 开发上下文菜单
-  - 实现搜索过滤功能
-  - 优化FileViewer组件
+    - 优化 `ProjectExplorerPanel` 组件。
+    - 改进 `FileTree` 组件样式，使其更紧凑，并为选中文件提供清晰反馈。
+    - 在 `FileTree` 中为不同文件类型添加图标 (使用 `react-icons`)。
+    - 优化 `FileViewer` 组件，集成 `react-syntax-highlighter` 实现代码语法高亮和行号显示。
+    - (待办/未来增强: 实现真正的目录层级结构展示、上下文菜单、高级搜索过滤功能)
 - **可交付成果**：
-  - 增强的资源面板
-  - 搜索和过滤功能
-  - 上下文菜单
+    - `FileTree` 显示文件类型图标和改进的样式。
+    - `FileViewer` 支持代码语法高亮。
+    - （注意：目录层级、上下文菜单、高级搜索等复杂功能尚未实现）
 
-### 任务4.6：状态控制栏优化（10次交互）
+### 任务4.6：状态控制栏优化（10次交互） - 已完成
 - **目标**：增强状态和控制体验
 - **具体任务**：
   - 优化StatusControlBar组件
-  - 改进ProgressIndicator样式
-  - 添加多阶段进度显示
-  - 开发悬停详细信息
-  - 实现颜色编码状态
-  - 优化控制按钮
+  - 改进ProgressIndicator样式 (添加图标和悬停提示)
+  - 添加多阶段进度显示 (已实现)
+  - 开发悬停详细信息 (通过title属性实现)
+  - 实现颜色编码状态 (已实现)
+  - 优化控制按钮 (添加图标，优化显隐逻辑和文本)
+  - 对StatusControlBar整体进行初步响应式调整 (小屏幕垂直堆叠)
 - **可交付成果**：
-  - 增强的状态控制栏
-  - 多阶段进度显示
-  - 详细状态信息
+  - 增强的状态控制栏，包含图标、更清晰的按钮逻辑和初步的响应式行为。
+  - 多阶段进度显示，包含图标和阶段名称提示。
+  - 详细状态信息。
 
-### 任务4.7：响应式设计实现（15次交互）
+### 任务4.7：响应式设计实现（15次交互） - 主要部分已完成 (面板拖拽调整待办)
 - **目标**：确保在各种设备上的良好体验
 - **具体任务**：
-  - 实现响应式布局
-  - 优化移动设备视图
-  - 创建平板设备视图
-  - 开发桌面设备视图
-  - 实现面板调整功能
-  - 测试各种屏幕尺寸
+  - 实现主页面板 (`page.tsx`) 的响应式布局 (小屏幕堆叠，大屏幕三栏)。
+  - 为小屏幕添加 `ProjectExplorerPanel` 和 `GamePreviewPanel` 的显示/隐藏切换按钮和逻辑。
+  - 使用 `allotment` 库为中等及以上屏幕实现可拖拽调整的面板布局。
+  - 对 `NaturalLanguageInput` 进行初步响应式调整。
+  - (待办) 实现更细致的面板调整功能（如 `react-split-pane` 或进一步配置 `allotment`）。
+  - (待办) 测试各种屏幕尺寸下的细节。
 - **可交付成果**：
-  - 完整的响应式设计
-  - 多设备支持
-  - 面板调整功能
+  - 初步的响应式设计，支持不同屏幕尺寸下的基本可用性。
+  - 桌面端可拖拽调整面板宽度。
+  - 小屏幕面板切换功能。
+  - (注意：面板拖拽调整功能的完善和全面测试是后续步骤)
 
 ## 阶段5：测试与优化
 
-### 任务5.1：组件单元测试（15次交互）
+### 任务5.1：组件单元测试（15次交互） - 已完成
 - **目标**：确保UI组件的质量
 - **具体任务**：
-  - 设置Jest测试环境
-  - 创建主要UI组件的测试
-  - 实现快照测试
-  - 开发交互测试
-  - 实现边缘情况测试
-  - 创建测试报告
+    - 安装 Jest 及相关依赖 (`@testing-library/react`, `@testing-library/jest-dom`, `ts-jest`, `@types/jest`)。
+    - 创建并配置 `gagent/jest.config.js`。
+    - 创建并配置 `gagent/tsconfig.jest.json`。
+    - 创建 `gagent/jest.setup.js` 以导入 `@testing-library/jest-dom`。
+    - 在 `package.json` 中添加 `test` 和 `test:watch` 脚本。
+    - 创建 `gagent/tests/unit/components/control/StatusControlBar.test.tsx`。
+    - 创建 `gagent/tests/jest-extended.d.ts` 解决Jest类型问题，扩展Assertion接口。
 - **可交付成果**：
-  - 组件测试套件
-  - 测试覆盖报告
-  - 测试文档
+    - Jest 测试环境已配置。
+    - `StatusControlBar` 组件的单元测试。
+    - 完善的Jest类型定义文件，解决了类型识别问题。
 
-### 任务5.2：服务单元测试（15次交互）
+### 任务5.2：服务单元测试（15次交互） - 已完成
 - **目标**：确保服务功能的质量
 - **具体任务**：
-  - 创建AI服务测试
-  - 实现文件服务测试
-  - 开发项目服务测试
-  - 创建WebSocket服务测试
-  - 实现游戏生成器测试
-  - 开发预览服务测试
+  - 为 `AIService` 编写单元测试 (mock `child_process.exec`)。
+  - 为 `FileService` 编写单元测试 (mock `fs/promises`)。
+  - 为 `ProjectService` 编写单元测试 (测试内存 CRUD)。
+  - 为 `WebSocketService` 编写单元测试 (mock emitter 函数)。
+  - 为 `PreviewService` 编写单元测试。
 - **可交付成果**：
-  - 服务测试套件
-  - 测试覆盖报告
-  - 测试文档
+  - 所有核心服务的完整单元测试：
+    - `gagent/tests/unit/services/ai.service.test.ts`
+    - `gagent/tests/unit/services/file.service.test.ts`
+    - `gagent/tests/unit/services/project.service.test.ts`
+    - `gagent/tests/unit/services/websocket.service.test.ts`
+    - `gagent/tests/unit/services/preview.service.test.ts`
 
-### 任务5.3：集成测试（15次交互）
-- **目标**：确保系统组件协同工作
+### 任务5.3：核心组件单元测试（15次交互） - 已完成
+- **目标**：确保核心引擎组件的质量
 - **具体任务**：
-  - 创建API集成测试
-  - 实现WebSocket集成测试
-  - 开发Agent工作流测试
-  - 创建游戏生成流程测试
-  - 实现UI与服务集成测试
-  - 开发错误处理测试
+  - 为 `ExecutionEngine` 编写单元测试 (测试工作计划执行、文件操作)。
+  - 为 `ThinkingEngine` 编写单元测试 (测试需求分析、工作计划生成)。
+  - 为 `AgentController` 编写单元测试 (测试控制流程、错误处理)。
+  - 为 `GameGenerator` 编写单元测试 (测试游戏生成逻辑)。
+  - 为 `GameTester` 编写单元测试 (测试游戏验证功能)。
 - **可交付成果**：
-  - 集成测试套件
-  - 测试覆盖报告
-  - 测试文档
+  - 所有核心引擎组件的完整单元测试：
+    - `gagent/tests/unit/lib/agent/execution.test.ts`
+    - `gagent/tests/unit/lib/agent/thinking.test.ts`
+    - `gagent/tests/unit/lib/agent/controller.test.ts`
+    - `gagent/tests/unit/lib/game/generator.test.ts`
+    - `gagent/tests/unit/lib/game/tester.test.ts`
 
-### 任务5.4：端到端测试（15次交互）
-- **目标**：确保完整用户流程的质量
+### 任务5.4：集成和端到端测试（15次交互） - 进行中
+- **目标**：确保系统组件协同工作和完整用户流程的质量
 - **具体任务**：
-  - 设置Cypress测试环境
-  - 创建用户流程测试
-  - 实现游戏生成测试
-  - 开发游戏预览测试
-  - 创建错误场景测试
-  - 实现性能测试
+  - 设置Cypress测试环境（已完成）
+  - 创建WebSocket初始化测试（已完成 - `cypress/e2e/websocket_initialization.cy.ts`）
+  - 创建核心UI元素加载测试（已完成 - `cypress/e2e/core_ui_elements_load.cy.ts`）
+  - 创建用户流程测试（待办）
+  - 实现游戏生成测试（待办）
+  - 开发游戏预览测试（待办）
+  - 创建错误场景测试（待办）
 - **可交付成果**：
-  - 端到端测试套件
-  - 测试覆盖报告
-  - 测试文档
+  - 基本的端到端测试已实现
+  - 待完成：更全面的端到端测试覆盖
 
-### 任务5.5：性能优化（15次交互）
+### 任务5.5：性能优化（15次交互） - 待办
 - **目标**：提升系统响应速度和效率
 - **具体任务**：
   - 优化代码加载和执行
@@ -449,7 +454,7 @@ GameAgent项目将采用模块化、渐进式开发方法，分为以下几个�
   - 优化后的代码
   - 基准测试结果
 
-### 任务5.6：文档和用户指南（10次交互）
+### 任务5.6：文档和用户指南（10次交互） - 进行中
 - **目标**：创建完整的文档和用户指南
 - **具体任务**：
   - 完善代码注释
@@ -529,15 +534,22 @@ GameAgent项目将采用模块化、渐进式开发方法，分为以下几个�
                            → 任务4.2 (执行操作面板优化)
                            → 任务4.3 (文件变更面板优化)
 
-任务3.1 (问答游戏模板) → 任务3.4 (游戏生成器)
-任务3.2 (匹配游戏模板) → 任务3.4 (游戏生成器)
-任务3.3 (排序游戏模板) → 任务3.4 (游戏生成器)
+任务3.1 (问答游戏模板) → 任务3.4 (游戏模板浏览与体验入口)
+任务3.2 (匹配游戏模板) → 任务3.4 (游戏模板浏览与体验入口)
+任务3.3 (排序游戏模板) → 任务3.4 (游戏模板浏览与体验入口)
 
-任务3.4 (游戏生成器) → 任务3.5 (游戏预览功能)
-                     → 任务3.6 (游戏资源管理)
-                     → 任务3.7 (游戏测试系统)
+任务3.4 (游戏模板浏览与体验入口) → 任务3.5 (游戏生成器核心实现)
+                                → 任务3.6 (游戏预览功能实现) // 预览面板被模板浏览入口复用
 
-任务3.5 (游戏预览功能) → 任务4.4 (游戏预览面板优化)
+任务3.1 (问答游戏模板) → 任务3.5 (游戏生成器核心实现)
+任务3.2 (匹配游戏模板) → 任务3.5 (游戏生成器核心实现)
+任务3.3 (排序游戏模板) → 任务3.5 (游戏生成器核心实现)
+
+任务3.5 (游戏生成器核心实现) → 任务3.6 (游戏预览功能实现)
+                             → 任务3.7 (游戏资源管理)
+                             → 任务3.8 (游戏测试系统)
+
+任务3.6 (游戏预览功能实现) → 任务4.4 (游戏预览面板优化)
 ```
 
 ## 里程碑和时间线
@@ -554,8 +566,8 @@ GameAgent项目将采用模块化、渐进式开发方法，分为以下几个�
 
 ### 里程碑3：游戏生成引擎完成
 - **时间**：项目开始后9周
-- **关键任务**：3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7
-- **可交付成果**：功能完整的游戏模板系统，游戏代码生成器，实时游戏预览功能
+- **关键任务**：3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8
+- **可交付成果**：功能完整的游戏模板系统，**专门的模板浏览与体验入口**，游戏代码生成器，实时游戏预览功能
 
 ### 里程碑4：用户界面完善
 - **时间**：项目开始后12周
@@ -570,7 +582,7 @@ GameAgent项目将采用模块化、渐进式开发方法，分为以下几个�
 ## 风险和缓解策略
 
 ### 1. AI服务响应时间
-- **风险**：Gemini API响应时间可能影响用户体验
+- **风险**：AI API响应时间可能影响用户体验（当前为阿里云通义千问）
 - **缓解**：
   - 实现请求队列和缓存机制
   - 添加超时处理和重试逻辑

@@ -3,17 +3,33 @@ import { WebSocketService } from '@/services/websocket.service'; // To emit thin
 import { AgentAction, ActionType, DevelopmentStage, LogLevel } from '@/types/agent';
 
 // Define interfaces for the structured thinking process
+
+export enum TaskType {
+    ANALYZE_REQUIREMENTS = 'analyze_requirements',
+    GENERATE_WORK_PLAN = 'generate_work_plan',
+    CREATE_FILE = 'create_file',
+    MODIFY_FILE = 'modify_file',
+    DELETE_FILE = 'delete_file',
+    GENERATE_GAME_CODE = 'generate_game_code',
+    CUSTOMIZE_GAME_ASSETS = 'customize_game_assets',
+    RUN_TESTS = 'run_tests',
+    DEBUG_CODE = 'debug_code',
+    REVIEW_CODE = 'review_code',
+    OTHER = 'other',
+}
 export interface RequirementAnalysis {
     originalInstruction: string;
     parsedRequirements: string[];
     constraints: string[];
     goals: string[];
     clarificationsNeeded?: string[]; // Questions to ask the user if ambiguity exists
+    details?: any; // For game-specific details like questions, items, etc.
 }
 
 export interface WorkPlanStep {
     id: string;
     description: string;
+    type: TaskType; // Type of task for this step
     estimatedTime?: number; // in seconds
     status: 'pending' | 'in-progress' | 'completed' | 'failed';
     details?: string; // More detailed explanation or sub-steps
@@ -51,13 +67,24 @@ export class ThinkingEngine {
         this.websocketService = websocketService;
     }
 
+    // 辅助函数，发送日志到前端
+    private sendLog(projectId: string, message: string, level: LogLevel = LogLevel.INFO, context?: any): void {
+        this.websocketService.sendAgentLog(projectId, {
+            id: crypto.randomUUID(),
+            message: `ThinkingEngine: ${message}`,
+            level,
+            timestamp: new Date(),
+            context
+        });
+    }
+
     private emitThinkingUpdate(projectId: string, thinkingMessage: string, action?: AgentAction): void {
         this.websocketService.sendAgentThinking(projectId, thinkingMessage);
         if (action) {
             this.websocketService.sendAgentAction(projectId, action);
         }
-        // Potentially also log this thinking step via a logging service or AgentController's addLog
-        console.log(`[ThinkingEngine][${projectId}] ${thinkingMessage}`);
+        // 发送日志到前端
+        this.sendLog(projectId, thinkingMessage);
     }
 
     /**
@@ -67,6 +94,7 @@ export class ThinkingEngine {
      * @returns A structured analysis of the requirements.
      */
     public async analyzeRequirement(projectId: string, instruction: string): Promise<RequirementAnalysis> {
+        this.sendLog(projectId, `Analyzing requirement >>>\n${instruction}\n<<< END REQUIREMENT`);
         this.emitThinkingUpdate(projectId, `Analyzing instruction: "${instruction}"`);
 
         // TODO: Implement actual AI call to parse instruction
@@ -86,6 +114,7 @@ export class ThinkingEngine {
             this.emitThinkingUpdate(projectId, "Instruction seems to mention complexity, clarification might be needed.");
         }
 
+        this.sendLog(projectId, `Analysis result:`, LogLevel.INFO, analysis);
         this.emitThinkingUpdate(projectId, "Requirement analysis complete.", {
             type: ActionType.ANALYZE,
             description: "Completed requirement analysis",
@@ -102,6 +131,7 @@ export class ThinkingEngine {
      * @returns A structured work plan.
      */
     public async generateWorkPlan(projectId: string, analysis: RequirementAnalysis): Promise<WorkPlan> {
+        this.sendLog(projectId, `Generating work plan for goals:`, LogLevel.INFO, analysis.goals);
         this.emitThinkingUpdate(projectId, `Generating work plan for: ${analysis.goals.join(', ')}`);
 
         // TODO: Implement actual AI call to generate a work plan
@@ -111,12 +141,13 @@ export class ThinkingEngine {
             projectId,
             overallGoal: analysis.goals.join('; '),
             steps: [
-                { id: crypto.randomUUID(), description: "Setup project structure", status: 'pending', estimatedTime: 300 },
-                { id: crypto.randomUUID(), description: "Develop core game logic", status: 'pending', estimatedTime: 1200 },
-                { id: crypto.randomUUID(), description: "Create UI components", status: 'pending', estimatedTime: 900 },
-                { id: crypto.randomUUID(), description: "Implement scoring and levels", status: 'pending', estimatedTime: 600 },
-                { id: crypto.randomUUID(), description: "Test and debug", status: 'pending', estimatedTime: 700 },
-                { id: crypto.randomUUID(), description: "Final review and optimization", status: 'pending', estimatedTime: 400 },
+                { id: crypto.randomUUID(), description: "Setup project structure", type: TaskType.CREATE_FILE, status: 'pending', estimatedTime: 300 },
+                { id: crypto.randomUUID(), description: "Generate game assets and initial code", type: TaskType.GENERATE_GAME_CODE, status: 'pending', estimatedTime: 1200 },
+                { id: crypto.randomUUID(), description: "Develop core game logic", type: TaskType.MODIFY_FILE, status: 'pending', estimatedTime: 1200 },
+                { id: crypto.randomUUID(), description: "Create UI components", type: TaskType.CREATE_FILE, status: 'pending', estimatedTime: 900 },
+                { id: crypto.randomUUID(), description: "Implement scoring and levels", type: TaskType.MODIFY_FILE, status: 'pending', estimatedTime: 600 },
+                { id: crypto.randomUUID(), description: "Test and debug", type: TaskType.RUN_TESTS, status: 'pending', estimatedTime: 700 },
+                { id: crypto.randomUUID(), description: "Final review and optimization", type: TaskType.REVIEW_CODE, status: 'pending', estimatedTime: 400 },
             ],
             currentStepIndex: 0,
         };
@@ -124,6 +155,7 @@ export class ThinkingEngine {
         // Simulate AI processing time
         await new Promise(resolve => setTimeout(resolve, 2000));
 
+        this.sendLog(projectId, `Generated work plan:`, LogLevel.INFO, plan);
         this.emitThinkingUpdate(projectId, "Work plan generated.", {
             type: ActionType.ANALYZE, // Or a new ActionType like PLAN_GENERATED
             description: "Generated work plan",
@@ -140,6 +172,7 @@ export class ThinkingEngine {
      * @returns A proposed solution.
      */
     public async proposeSolution(projectId: string, problem: ProblemDetails): Promise<SolutionProposal> {
+        this.sendLog(projectId, `Proposing solution for problem:`, LogLevel.INFO, problem);
         this.emitThinkingUpdate(projectId, `Thinking about a solution for problem: "${problem.description}"`);
 
         // TODO: Implement AI call to generate a solution proposal
@@ -152,6 +185,7 @@ export class ThinkingEngine {
         };
         await new Promise(resolve => setTimeout(resolve, 1800));
 
+        this.sendLog(projectId, `Proposed solution:`, LogLevel.INFO, proposal);
         this.emitThinkingUpdate(projectId, "Solution proposed.", {
             type: ActionType.ANALYZE, // Or a new ActionType like SOLUTION_PROPOSED
             description: "Proposed a solution",

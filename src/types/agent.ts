@@ -54,6 +54,29 @@ export interface AgentLog {
     context?: any; // Additional context for the log entry
 }
 
+export enum ThoughtStage {
+    PROBLEM_DEFINITION = 'Problem Definition',
+    INFORMATION_GATHERING = 'Information Gathering',
+    SOLUTION_DESIGN = 'Solution Design',
+    PLANNING = 'Planning',
+    EXECUTION_STEP = 'Execution Step', // For individual steps from WorkPlan
+    EVALUATION = 'Evaluation',
+    REFINEMENT = 'Refinement',
+    GAME_GENERATION = 'Game Generation', // Specific stage for game generation
+    INTERNAL_STATE_UPDATE = 'Internal State Update', // For non-AI related state changes
+}
+
+export interface ThoughtStep {
+    id: string;
+    stage: ThoughtStage | DevelopmentStage | string; // Allow flexibility, DevelopmentStage for overall progress
+    description: string;
+    details?: string | object; // Can be simple text or structured data like a plan step
+    status: 'pending' | 'in-progress' | 'completed' | 'skipped' | 'failed' | 'info'; // Added 'info' for non-task steps
+    timestamp: string; // ISO string for date
+    decision?: string; // If this step involved a key decision
+    alternativesConsidered?: string[];
+}
+
 export interface AgentState {
     id: string; // Agent instance ID, could be same as projectId
     projectId: string;
@@ -69,4 +92,5 @@ export interface AgentState {
         message: string;
         details?: string;
     };
+    thoughtProcess?: ThoughtStep[]; // Array to store structured thinking steps
 }

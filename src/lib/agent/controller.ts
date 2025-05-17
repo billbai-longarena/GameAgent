@@ -1,41 +1,56 @@
 import { AIService } from '@/services/ai.service';
 import { WebSocketService } from '@/services/websocket.service';
-import { AgentState, AgentStatus, DevelopmentStage, AgentLog, LogLevel, ActionType } from '@/types/agent';
-import { ThinkingEngine, RequirementAnalysis, WorkPlan } from './thinking';
-import { ExecutionEngine } from './execution'; // Import ExecutionEngine
-import { FileService } from '@/services/file.service'; // Needed for ExecutionEngine
+import { AgentState, AgentStatus, DevelopmentStage, AgentLog, LogLevel, ActionType, ThoughtStep, ThoughtStage } from '@/types/agent';
+import { ThinkingEngine, RequirementAnalysis, WorkPlan, TaskType } from './thinking';
+import { ExecutionEngine } from './execution';
+import { FileService } from '@/services/file.service';
+import { GameGenerator, GameRequirements, Customizations, GeneratedGame } from '../game/generator';
+import { GameType, Project } from '@/types/project';
 
 export class AgentController {
     private projectId: string;
+    private project: Project;
     private aiService: AIService;
     private websocketService: WebSocketService;
     private thinkingEngine: ThinkingEngine;
     private executionEngine: ExecutionEngine;
+    private gameGenerator: GameGenerator;
     private state: AgentState;
     private currentWorkPlan: WorkPlan | null = null;
 
     constructor(
-        projectId: string,
+        project: Project,
         aiService: AIService,
         websocketService: WebSocketService,
         thinkingEngine: ThinkingEngine,
-        executionEngine: ExecutionEngine // Add executionEngine
+        executionEngine: ExecutionEngine,
+        gameGenerator: GameGenerator
     ) {
-        this.projectId = projectId;
+        this.project = project;
+        this.projectId = project.id;
         this.aiService = aiService;
         this.websocketService = websocketService;
         this.thinkingEngine = thinkingEngine;
-        this.executionEngine = executionEngine; // Initialize executionEngine
+        this.executionEngine = executionEngine;
+        this.gameGenerator = gameGenerator;
         this.state = this.initializeState();
         this.emitStateUpdate();
     }
 
     private initializeState(): AgentState {
+        const initialThought: ThoughtStep = {
+            id: crypto.randomUUID(),
+            stage: ThoughtStage.INTERNAL_STATE_UPDATE,
+            description: 'Agent is initializing.',
+            status: 'completed',
+            timestamp: new Date().toISOString(),
+        };
         return {
-            id: this.projectId, // Assuming agentId is the same as projectId for now
+            id: this.projectId,
             projectId: this.projectId,
             currentTask: 'Initializing Agent',
-            thinking: 'Agent is initializing...',
+            thinking: initialThought.description,
+            thoughtProcess: [initialThought],
             action: {
                 type: ActionType.INITIALIZE,
                 description: 'Agent initialization',
@@ -47,82 +62,237 @@ export class AgentController {
             logs: [{
                 id: crypto.randomUUID(),
                 message: 'Agent initialized',
-                level: LogLevel.INFO, // Use Enum
+                level: LogLevel.INFO,
                 timestamp: new Date(),
             }],
             estimatedTimeRemaining: 0,
         };
     }
 
+    private addThoughtStep(stepData: Omit<ThoughtStep, 'id' | 'timestamp'>): ThoughtStep {
+        const newStep: ThoughtStep = {
+            ...stepData,
+            id: crypto.randomUUID(),
+            timestamp: new Date().toISOString(),
+        };
+        this.state.thoughtProcess = [...(this.state.thoughtProcess || []), newStep].slice(-50);
+        this.state.thinking = newStep.description; // Keep single 'thinking' string updated
+        this.emitStateUpdate(); // Emit full state, which includes thoughtProcess
+        return newStep;
+    }
+
     private emitStateUpdate(): void {
-        console.log(`Agent state updated for project ${this.projectId}:`, this.state);
+        if (this.state.thoughtProcess && this.state.thoughtProcess.length > 0) {
+            this.state.thinking = this.state.thoughtProcess[this.state.thoughtProcess.length - 1].description;
+        }
+        this.addLog(`Agent state updated: Thinking: ${this.state.thinking}`, LogLevel.INFO);
         this.websocketService.sendAgentState(this.projectId, this.state);
     }
 
     public async start(instruction: string): Promise<void> {
         if (this.state.status === AgentStatus.IDLE || this.state.status === AgentStatus.PAUSED || this.state.status === AgentStatus.COMPLETED) {
-            console.log(`Agent starting for project ${this.projectId} with instruction: "${instruction}"`);
+            this.addLog(`Starting agent with instruction >>>\n${instruction}\n<<< END INSTRUCTION`, LogLevel.INFO);
             this.state.status = AgentStatus.THINKING;
             this.state.currentTask = `Processing instruction: ${instruction}`;
-            this.state.thinking = `Understanding instruction: "${instruction}"`;
             this.state.action = { type: ActionType.USER_INPUT, description: `Start instruction: ${instruction}`, timestamp: new Date() };
+
+            this.addThoughtStep({
+                stage: ThoughtStage.PROBLEM_DEFINITION,
+                description: `Received instruction: "${instruction}"`,
+                status: 'in-progress',
+            });
             this.addLog('Agent started processing instruction.', LogLevel.INFO);
-            this.emitStateUpdate(); // Emit initial "processing" state
+            // emitStateUpdate is called by addThoughtStep
 
             try {
-                // Step 1: Analyze Requirement
+                this.addThoughtStep({
+                    stage: DevelopmentStage.REQUIREMENT_ANALYSIS,
+                    description: 'Analyzing user requirements...',
+                    status: 'in-progress',
+                });
                 this.state.stage = DevelopmentStage.REQUIREMENT_ANALYSIS;
-                this.emitStateUpdate();
-                const analysis: RequirementAnalysis = await this.thinkingEngine.analyzeRequirement(this.projectId, instruction);
-                this.state.thinking = `Requirement Analysis: ${analysis.goals.join(', ')}`;
+                // emitStateUpdate is called by addThoughtStep
+
+                let analysis: RequirementAnalysis;
+                try {
+                    this.addLog(`Calling AI service for requirement analysis...`, LogLevel.INFO);
+                    analysis = await this.thinkingEngine.analyzeRequirement(this.projectId, instruction);
+                    this.addLog(`AI service returned analysis:`, LogLevel.INFO, analysis);
+                } catch (err) {
+                    const analysisErrorMsg = `Error during requirement analysis: ${(err as Error).message}`;
+                    this.addThoughtStep({
+                        stage: DevelopmentStage.REQUIREMENT_ANALYSIS,
+                        description: analysisErrorMsg,
+                        status: 'failed',
+                        details: (err instanceof Error ? { name: err.name, message: err.message } : { error: String(err) })
+                    });
+                    this.state.status = AgentStatus.ERROR;
+                    this.state.error = { message: `Requirement analysis failed: ${(err as Error).message}` };
+                    this.addLog(`Requirement analysis error: ${(err as Error).message}`, LogLevel.ERROR);
+                    // emitStateUpdate is called by addThoughtStep
+                    return;
+                }
+
+                this.addThoughtStep({
+                    stage: DevelopmentStage.REQUIREMENT_ANALYSIS,
+                    description: `Analysis complete. Goals: ${analysis.goals.join(', ')}.`,
+                    details: analysis,
+                    status: 'completed',
+                });
+
                 if (analysis.clarificationsNeeded && analysis.clarificationsNeeded.length > 0) {
-                    this.state.thinking += `\nClarifications needed: ${analysis.clarificationsNeeded.join('; ')}`;
-                    this.addLog(`Clarification needed: ${analysis.clarificationsNeeded.join('; ')}`, LogLevel.INFO);
-                    // TODO: Implement a way to pause and ask user for clarification
-                    this.state.status = AgentStatus.PAUSED; // Pause if clarification is needed
-                    this.emitStateUpdate();
+                    const clarificationMsg = `Clarifications needed: ${analysis.clarificationsNeeded.join('; ')}`;
+                    this.addThoughtStep({
+                        stage: DevelopmentStage.REQUIREMENT_ANALYSIS,
+                        description: clarificationMsg,
+                        status: 'pending',
+                    });
+                    this.addLog(clarificationMsg, LogLevel.INFO);
+                    this.state.status = AgentStatus.PAUSED;
+                    this.emitStateUpdate(); // Emit PAUSED state
                     return;
                 }
                 this.addLog('Requirement analysis complete.', LogLevel.INFO);
-                this.emitStateUpdate();
 
-                // Step 2: Generate Work Plan
-                this.state.stage = DevelopmentStage.DESIGN; // Assuming planning is part of design
-                this.state.thinking = 'Generating work plan...';
-                this.emitStateUpdate();
+                this.addThoughtStep({
+                    stage: DevelopmentStage.DESIGN,
+                    description: 'Generating work plan...',
+                    status: 'in-progress',
+                });
+                this.state.stage = DevelopmentStage.DESIGN;
+                // emitStateUpdate called by addThoughtStep
+
+                this.addLog(`Calling AI service to generate work plan...`, LogLevel.INFO);
                 const plan: WorkPlan = await this.thinkingEngine.generateWorkPlan(this.projectId, analysis);
+                this.addLog(`AI service returned work plan:`, LogLevel.INFO, plan);
                 this.currentWorkPlan = plan;
-                this.state.thinking = `Work Plan Generated: ${plan.steps.length} steps. First step: ${plan.steps[0]?.description}`;
+
+                this.addThoughtStep({
+                    stage: DevelopmentStage.DESIGN,
+                    description: `Work Plan Generated: ${plan.steps.length} steps. First step: ${plan.steps[0]?.description}`,
+                    details: plan,
+                    status: 'completed',
+                });
                 this.addLog(`Work plan generated with ${plan.steps.length} steps.`, LogLevel.INFO);
-                this.emitStateUpdate();
 
-                // Step 3: Execute Work Plan
-                this.state.stage = DevelopmentStage.CODING; // Or a more specific execution stage
-                this.state.thinking = 'Starting work plan execution...';
+                this.addThoughtStep({
+                    stage: DevelopmentStage.CODING,
+                    description: 'Starting work plan execution...',
+                    status: 'in-progress',
+                });
+                this.state.stage = DevelopmentStage.CODING;
                 this.addLog('Handing off to Execution Engine.', LogLevel.INFO);
-                this.emitStateUpdate();
+                // emitStateUpdate called by addThoughtStep
 
+                const gameGenerationStep = plan.steps.find(step => step.type === TaskType.GENERATE_GAME_CODE || step.type === TaskType.CUSTOMIZE_GAME_ASSETS);
+
+                if (gameGenerationStep && this.project.gameType) {
+                    this.addThoughtStep({
+                        stage: ThoughtStage.GAME_GENERATION,
+                        description: 'Starting game generation phase.',
+                        status: 'in-progress',
+                    });
+                    // emitStateUpdate called by addThoughtStep
+
+                    const gameReqs: GameRequirements = {
+                        title: this.project.name || 'My Awesome Game',
+                        description: this.project.description || 'A fun game generated by AI.',
+                    };
+                    if (this.project.gameType === GameType.QUIZ && analysis.details?.questions) {
+                        gameReqs.questions = analysis.details.questions;
+                    } else if (this.project.gameType === GameType.MATCHING && analysis.details?.pairs) {
+                        gameReqs.pairs = analysis.details.pairs;
+                    } else if (this.project.gameType === GameType.SORTING && analysis.details?.sortableItems) {
+                        gameReqs.sortableItems = analysis.details.sortableItems;
+                    }
+
+                    const customizations: Customizations = { difficulty: 'medium' };
+
+                    this.addLog(`Calling game generator with requirements:`, LogLevel.INFO, gameReqs);
+                    const generatedGame: GeneratedGame | null = await this.gameGenerator.generateGame(
+                        this.project,
+                        this.project.gameType,
+                        gameReqs,
+                        customizations
+                    );
+                    this.addLog(`Game generator returned:`, LogLevel.INFO, generatedGame ? `Game with ${generatedGame.files.length} files` : 'null');
+
+                    if (generatedGame && generatedGame.files.length > 0) {
+                        this.addThoughtStep({
+                            stage: ThoughtStage.GAME_GENERATION,
+                            description: `Game generated with ${generatedGame.files.length} files. Preview at: ${generatedGame.previewUrl}`,
+                            details: generatedGame,
+                            status: 'completed',
+                        });
+                        this.addLog(`Game generated with ${generatedGame.files.length} files. Preview at: ${generatedGame.previewUrl}`, LogLevel.SUCCESS);
+                        if (generatedGame.previewUrl) {
+                            this.websocketService.sendPreviewUpdated(this.projectId, generatedGame.previewUrl);
+                        }
+                        // Send game:generated event
+                        // Ensure gameReqs and this.project.gameType are accessible here.
+                        // They are defined in the outer scope of the gameGenerationStep check.
+                        const newGameListItem = {
+                            id: generatedGame.gameId,
+                            name: gameReqs.title || `Generated Game ${generatedGame.gameId}`,
+                            description: gameReqs.description || `AI Generated game based on ${generatedGame.baseTemplateId}`,
+                            entryPoint: generatedGame.previewUrl || `/${generatedGame.files.find(f => f.name.endsWith('.html'))?.path}`,
+                            previewImageUrl: `/${generatedGame.files.find(f => f.name.includes('-preview') && (f.name.endsWith('.png') || f.name.endsWith('.jpg')))?.path}`, // Basic assumption
+                            isGenerated: true,
+                            generatedAt: new Date().toISOString(),
+                            tags: ['AI Generated', this.project.gameType ? this.project.gameType.toString() : 'UnknownType'],
+                        };
+                        this.websocketService.sendGameGenerated(this.projectId, newGameListItem);
+
+                    } else {
+                        this.addThoughtStep({
+                            stage: ThoughtStage.GAME_GENERATION,
+                            description: 'Game generation failed or produced no files.',
+                            status: 'failed',
+                        });
+                        this.addLog('Game generation failed or produced no files.', LogLevel.WARNING);
+                    }
+                }
+
+                this.addThoughtStep({
+                    stage: DevelopmentStage.CODING,
+                    description: 'Executing remaining work plan steps (if any).',
+                    status: 'in-progress',
+                });
+                this.addLog('Executing remaining work plan steps (if any).', LogLevel.INFO);
+
+                this.addLog(`Calling execution engine to execute work plan...`, LogLevel.INFO);
                 const executionSuccess = await this.executionEngine.executeWorkPlan(plan);
+                this.addLog(`Execution engine returned:`, LogLevel.INFO, executionSuccess ? 'success' : 'failure');
 
                 if (executionSuccess) {
-                    this.state.progress = 100; // Assuming plan completion means 100% for now
-                    this.completeTask('Work plan executed successfully.');
+                    this.state.progress = 100;
+                    this.completeTask('Work plan executed successfully (including any game generation).');
                 } else {
+                    this.addThoughtStep({
+                        stage: DevelopmentStage.CODING,
+                        description: 'Work plan execution failed or was incomplete.',
+                        status: 'failed',
+                        details: 'One or more steps in the work plan failed or game generation issues.'
+                    });
                     this.state.status = AgentStatus.ERROR;
-                    this.state.thinking = 'Work plan execution failed.';
-                    this.state.error = { message: 'One or more steps in the work plan failed.' };
-                    this.addLog('Work plan execution failed.', LogLevel.ERROR);
+                    this.state.error = { message: 'One or more steps in the work plan failed or game generation issues.' };
+                    this.addLog('Work plan execution failed or had issues.', LogLevel.ERROR);
                     this.emitStateUpdate();
                 }
 
             } catch (error) {
-                console.error(`Error during agent execution for project ${this.projectId}:`, error);
-                const errorMessage = error instanceof Error ? error.message : 'Unknown error during execution.';
+                this.addLog(`Error during agent execution:`, LogLevel.ERROR, error);
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                this.addThoughtStep({
+                    stage: this.state.stage || ThoughtStage.INTERNAL_STATE_UPDATE,
+                    description: `Execution error: ${errorMessage}`,
+                    status: 'failed',
+                    details: (error instanceof Error ? { name: error.name, message: error.message, stack: error.stack } : { error: String(error) })
+                });
                 this.state.status = AgentStatus.ERROR;
-                this.state.thinking = `Error: ${errorMessage}`;
                 this.state.error = { message: errorMessage };
                 this.addLog(`Execution error: ${errorMessage}`, LogLevel.ERROR);
-                this.emitStateUpdate();
+                this.emitStateUpdate(); // emitStateUpdate is called by addThoughtStep, but call explicitly if error state needs immediate propagation
             }
         } else {
             this.addLog('Agent is already running or in an invalid state to start.', LogLevel.WARNING);
@@ -132,12 +302,18 @@ export class AgentController {
 
     public pause(): void {
         if (this.state.status === AgentStatus.THINKING || this.state.status === AgentStatus.CODING || this.state.status === AgentStatus.TESTING) {
-            this.state.status = AgentStatus.PAUSED;
+            this.addLog(`Pausing agent for project ${this.projectId}`, LogLevel.INFO);
             const thinkingBeforePause = this.state.thinking;
-            this.state.thinking = 'Agent paused by user.';
+            this.state.status = AgentStatus.PAUSED;
             this.state.action = { type: ActionType.USER_INPUT, description: 'User paused agent', details: { thinkingBeforePause }, timestamp: new Date() };
+            this.addThoughtStep({
+                stage: ThoughtStage.INTERNAL_STATE_UPDATE,
+                description: 'Agent paused by user.',
+                status: 'info',
+                details: { thinkingBeforePause }
+            });
             this.addLog('Agent paused.', LogLevel.INFO);
-            this.emitStateUpdate();
+            // emitStateUpdate is called by addThoughtStep
         } else {
             this.addLog('Agent cannot be paused in its current state.', LogLevel.WARNING);
             this.emitStateUpdate();
@@ -146,21 +322,20 @@ export class AgentController {
 
     public resume(): void {
         if (this.state.status === AgentStatus.PAUSED) {
-            this.state.status = AgentStatus.THINKING; // Default to THINKING, actual task continuation logic needed
-            this.state.thinking = 'Agent resumed by user. Re-evaluating current task...';
+            this.addLog(`Resuming agent for project ${this.projectId}`, LogLevel.INFO);
+            this.state.status = AgentStatus.THINKING;
             this.state.action = { type: ActionType.USER_INPUT, description: 'User resumed agent', timestamp: new Date() };
+            this.addThoughtStep({
+                stage: ThoughtStage.INTERNAL_STATE_UPDATE,
+                description: 'Agent resumed by user. Re-evaluating current task...',
+                status: 'in-progress',
+            });
             this.addLog('Agent resumed.', LogLevel.INFO);
-            this.emitStateUpdate();
+            // emitStateUpdate is called by addThoughtStep
 
-            // Simulate re-evaluation then continue
-            // TODO: This needs more sophisticated logic to truly resume the previous task state
             setTimeout(() => {
                 if (this.state.status === AgentStatus.THINKING) {
-                    // Potentially re-trigger the part of the task that was interrupted
-                    // For now, just a placeholder to restart the 'start' logic if it was the entry point
-                    // This is a simplification.
-                    console.log("Resuming: Re-triggering a simplified start for demo purposes.");
-                    // this.start(this.state.currentTask); // This might not be correct if currentTask was "Processing instruction..."
+                    this.addLog("Resuming: Re-triggering a simplified start for demo purposes.", LogLevel.INFO);
                 }
             }, 1000);
         } else {
@@ -170,42 +345,47 @@ export class AgentController {
     }
 
     public stop(): void {
+        this.addLog(`Stopping agent for project ${this.projectId}`, LogLevel.INFO);
         this.state.status = AgentStatus.IDLE;
-        this.state.thinking = 'Agent stopped by user. All tasks cleared.';
         this.state.currentTask = 'Agent stopped.';
         this.state.progress = 0;
         this.state.action = { type: ActionType.USER_INPUT, description: 'User stopped agent', timestamp: new Date() };
+        this.addThoughtStep({
+            stage: ThoughtStage.INTERNAL_STATE_UPDATE,
+            description: 'Agent stopped by user. All tasks cleared.',
+            status: 'info',
+        });
         this.addLog('Agent stopped and reset.', LogLevel.INFO);
-        this.emitStateUpdate();
-        // TODO: Add any cleanup logic here, like clearing timers or stopping ongoing AI calls
+        // emitStateUpdate is called by addThoughtStep
     }
 
     private completeTask(completionMessage: string): void {
         this.state.status = AgentStatus.COMPLETED;
-        this.state.thinking = `Task completed: ${completionMessage}`;
         this.state.currentTask = `Completed: ${completionMessage}`;
         this.state.progress = 100;
         this.state.action = { type: ActionType.AGENT_RESPONSE, description: `Task completed: ${completionMessage}`, timestamp: new Date() };
+        this.addThoughtStep({
+            stage: DevelopmentStage.COMPLETED,
+            description: `Task completed: ${completionMessage}`,
+            status: 'completed',
+        });
         this.addLog(completionMessage, LogLevel.SUCCESS);
-        this.emitStateUpdate();
+        // emitStateUpdate is called by addThoughtStep
     }
 
     public getState(): AgentState {
         return { ...this.state };
     }
 
-    private addLog(message: string, level: LogLevel): void {
+    private addLog(message: string, level: LogLevel, context?: any): void {
         const logEntry: AgentLog = {
             id: crypto.randomUUID(),
             message,
             level,
             timestamp: new Date(),
+            context
         };
-        this.state.logs.push(logEntry);
-        // Optional: Limit log size
-        if (this.state.logs.length > 100) { // Keep last 100 logs
-            this.state.logs.shift();
-        }
+        this.state.logs = [...(this.state.logs || []), logEntry].slice(-100);
         this.websocketService.sendAgentLog(this.projectId, logEntry);
     }
 }

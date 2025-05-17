@@ -1,0 +1,1 @@
+// Fallback JS for 拖放游戏模板

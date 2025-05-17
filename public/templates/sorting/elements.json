@@ -1,0 +1,46 @@
+{
+    "title": "中国历史朝代排序",
+    "instruction": "请将以下中国历史朝代按时间顺序排列。",
+    "items": [
+        {
+            "id": "qin",
+            "text": "秦朝 (公元前221年-公元前207年)",
+            "correctOrder": 1
+        },
+        {
+            "id": "han",
+            "text": "汉朝 (公元前202年-公元220年)",
+            "correctOrder": 2
+        },
+        {
+            "id": "sui",
+            "text": "隋朝 (公元581年-公元618年)",
+            "correctOrder": 3
+        },
+        {
+            "id": "tang",
+            "text": "唐朝 (公元618年-公元907年)",
+            "correctOrder": 4
+        },
+        {
+            "id": "song",
+            "text": "宋朝 (公元960年-公元1279年)",
+            "correctOrder": 5
+        },
+        {
+            "id": "yuan",
+            "text": "元朝 (公元1271年-公元1368年)",
+            "correctOrder": 6
+        },
+        {
+            "id": "ming",
+            "text": "明朝 (公元1368年-公元1644年)",
+            "correctOrder": 7
+        },
+        {
+            "id": "qing",
+            "text": "清朝 (公元1636年-公元1912年)",
+            "correctOrder": 8
+        }
+    ]
+}

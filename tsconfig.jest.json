@@ -1,0 +1,27 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "jsx": "react-jsx", // or "preserve" if you handle JSX transformation elsewhere for tests
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+        "module": "commonjs", // Jest typically runs in a Node environment
+        "moduleResolution": "node", // Explicitly set for Jest environment
+        "types": [
+            "jest",
+            "@testing-library/jest-dom",
+            "node"
+        ]
+    },
+    "include": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.ts",
+        "**/*.spec.tsx",
+        "jest.setup.js", // If you create this file
+        "tests/jest-extended.d.ts" // 包含我们扩展的Jest类型定义
+    ],
+    "exclude": [
+        "node_modules",
+        "cypress" // Exclude Cypress tests if they are in a separate folder
+    ]
+}

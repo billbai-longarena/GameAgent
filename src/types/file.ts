@@ -27,7 +27,9 @@ export interface File {
 
 // Interface for file changes, could be used in WebSocket events or services
 export interface FileChange {
+    id: string; // Unique ID for the change event itself (e.g., for React keys)
     operation: 'create' | 'update' | 'delete';
     file: Partial<File>; // For delete, only id/path might be relevant. For create/update, more fields.
     diff?: string; // For updates, a diff string could be provided
+    timestamp: string; // ISO 8601 date string for when the change event occurred
 }

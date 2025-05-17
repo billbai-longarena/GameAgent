@@ -1,0 +1,14 @@
+{
+    "id": "sorting-template",
+    "name": "排序游戏模板",
+    "description": "一个基础的排序游戏，用户可以将项目拖动到正确的顺序。",
+    "version": "1.0.0",
+    "previewImageUrl": "sorting-preview.png",
+    "entryPoint": "index.html",
+    "tags": [
+        "教育",
+        "逻辑",
+        "排序"
+    ],
+    "author": "GameAgent Team"
+}
